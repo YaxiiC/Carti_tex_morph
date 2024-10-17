@@ -32,7 +32,7 @@ class UNet(nn.Module):
         return x
 
 
-def train_nnunet_model(train_loader, device, epochs=2):
+def train_unet_model(train_loader, device, epochs=2):
     model = UNet(in_channels=1, out_channels=3).to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.BCELoss() 
@@ -75,7 +75,7 @@ def train_nnunet_model(train_loader, device, epochs=2):
     return model
 
 
-def infer_nnunet_model(model, mri_image):
+def infer_unet_model(model, mri_image):
     model.eval()
     with torch.no_grad():
         mri_image = mri_image.unsqueeze(0).to(next(model.parameters()).device) 

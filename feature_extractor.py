@@ -28,10 +28,13 @@ def extract_features_from_ROI(masked_image):
         shape_features = extract_shape_features(image)
         print("Shape features extracted")
 
-        glcm_features = extract_glcm_features(image)
+        #glcm_features = extract_glcm_features(image)
+        #print("glcm_features extracted")
 
-        gldm_features = extract_gldm_features(image)
-        glrlm_features = extract_glrlm_features(image)
+        #gldm_features = extract_gldm_features(image)
+        #print("gldm_features extracted")
+        #glrlm_features = extract_glrlm_features(image)
+        #print("glrlm_features extracted")
         
         #need to be fixed
         glszm_features = extract_glszm_features(image)
@@ -41,11 +44,11 @@ def extract_features_from_ROI(masked_image):
         combined_feature_vector = torch.cat([
             texture_features,
             shape_features,
-            glcm_features,
-            gldm_features,
-            glrlm_features,
-            glszm_features,
-            ngtdm_features
+            #glcm_features,
+            #gldm_features,
+            #glrlm_features
+            #glszm_features,
+            #ngtdm_features
         ], dim=0)
 
         combined_features.append(combined_feature_vector)
