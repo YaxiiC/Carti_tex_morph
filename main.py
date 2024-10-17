@@ -2,133 +2,114 @@ import os
 import torch
 from torch.utils.data import DataLoader
 from dataset import MRNetDataset
-
-from nnunet_model import train_nnunet_model, infer_nnunet_model
+from unet_model import UNet  # Import your custom UNet
 from feature_extractor import extract_features_from_ROI
+from outcome_predictor import LogisticRegressionModel
 from utils import save_model_weights
-
-# Define train_logistic_regression_model and output_feature_importance directly here
-import torch
-import torch.nn as nn
 import torch.optim as optim
+import torch.nn as nn
 
-def train_model1_and_extract_features(nnunet, dataloader, device):
-    nnunet.eval()  # Set nnU-Net to evaluation mode
-    extracted_features = []
-    labels = []
+
+
+def train_combined_model(unet, dataloader, device, num_epochs=10, lr=0.001):
     
-    for batch_idx, batch in enumerate(dataloader):
-        images, batch_labels = batch
-        images = images.to(device)
-        batch_labels = batch_labels.to(device)
+    optimizer_unet = optim.Adam(unet.parameters(), lr=lr)
+    
+    regression_loss_fn = nn.BCELoss()  
 
-        # Model1 (nnU-Net) to generate mask
-        with torch.no_grad():
-            mask = nnunet(images)
-        print(f"Forward pass input shape: {images.shape}")
-        print(f"Model output shape (mask): {mask.shape}")
+    regression_model = None  
 
-        # Extract features from the masked image (ROI)
-        for i in range(images.size(0)):
-            cropped_image = images[i] * mask[i]  # Crop the image using the mask
-            print(f"  Processing image {i + 1} in batch {batch_idx + 1}:")
-            print(f"    Cropped image shape: {cropped_image.shape}")
-            features = extract_features_from_ROI(cropped_image)  # Assume this function now handles torch tensors
-            print(f"    Extracted features shape: {features.shape}")
-            
-            features = features.view(-1)
-            extracted_features.append(features)
-            labels.append(batch_labels[i])
+    unet.train()  
 
-    labels = torch.stack(labels).float()
-
-    return torch.stack(extracted_features), labels
-
-
-class LogisticRegressionModel(nn.Module):
-    def __init__(self, input_size, output_size):
-        super(LogisticRegressionModel, self).__init__()
-        # Dynamically set the input size based on extracted features
-        self.linear = nn.Linear(input_size, output_size)
-
-    def forward(self, x):
-        outputs = self.linear(x)
-        return outputs
-
-def train_logistic_regression_model(extracted_features, labels, num_epochs=10, learning_rate=0.01):
-    input_size = extracted_features.shape[1]
-    output_size = labels.shape[1]  # Number of classes
-    print(f"Input size: {input_size}, Output size: {output_size}")
-    print(f"Extracted features shape: {extracted_features.shape}")
-    print(f"Labels shape: {labels.shape}")
-
-    model = LogisticRegressionModel(input_size, output_size)
-    criterion = nn.BCEWithLogitsLoss()
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-    # Training loop
     for epoch in range(num_epochs):
-        model.train()
+        print(f"\nEpoch [{epoch+1}/{num_epochs}]")  
+        total_loss = 0
+        for batch_idx, batch in enumerate(dataloader):
+            images, reg_labels = batch  
+            images = images.to(device)
+            reg_labels = reg_labels.to(device)
 
-        # Forward pass
-        outputs = model(extracted_features)
-        print(f"Outputs shape: {outputs.shape}")
-        loss = criterion(outputs, labels)
+            print(f"Batch {batch_idx+1}:")  
+            print(f"  Input images shape: {images.shape}")
+            print(f"  Regression labels shape: {reg_labels.shape}")
 
-        # Backward and optimize
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+           
+            masks = unet(images)
+            print(f"  UNet output (masks) shape: {masks.shape}")
 
-        if (epoch+1) % 10 == 0:
-            print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+            
+            features = []
+            for i in range(images.size(0)):
+                cropped_image = images[i] * masks[i]  # Cropping the image with the mask
+                print(f"    Processing image {i+1}/{images.size(0)}, cropped image shape: {cropped_image.shape}")
+                features.append(extract_features_from_ROI(cropped_image))
+                print(f"    Image {i+1} processed, extracted feature shape: {features[-1].shape}")  # Debug: Feature extraction
 
-    return model
+            print("  Combining features...")
+            features = torch.stack(features).to(device)  # Combine all extracted features
+            print(f"  Combined features shape: {features.shape}")
 
-def output_feature_importance(model):
-    # Access the learned weights as the feature importance
-    importance = model.linear.weight.detach().cpu()  # Keep the weights in torch.Tensor format
-    print("Feature Importance (Tensor):", importance)
-    return importance
+            
+            if regression_model is None:
+                input_dim = features.shape[1]  
+                regression_model = LogisticRegressionModel(input_dim=input_dim, output_dim=1).to(device)
+                optimizer_regression = optim.Adam(regression_model.parameters(), lr=lr)  
+                print(f"  Regression model initialized with input_dim: {input_dim}")
+
+            
+            print("  Performing forward pass through regression model...")
+            reg_outputs = regression_model(features)
+            print(f"  Regression model output shape: {reg_outputs.shape}")
+
+            
+            reg_loss = regression_loss_fn(reg_outputs, reg_labels)
+            print(f"  Regression loss: {reg_loss.item()}")  
+
+            # Backpropagation
+            optimizer_unet.zero_grad()
+            optimizer_regression.zero_grad()
+            total_loss = reg_loss
+            total_loss.backward()
+            optimizer_unet.step()
+            optimizer_regression.step()
+
+        print(f"Epoch [{epoch+1}/{num_epochs}] completed, Total Loss: {total_loss.item():.4f}")  
+    return unet, regression_model
 
 
 def main():
+   
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    root_dir = "/Users/chrissychen/Documents/PhD_2nd_year/miccai2025/MRNet-v1.0"  # Update to your dataset path
+   
+    root_dir = "/Users/chrissychen/Documents/PhD_2nd_year/miccai2025/MRNet-v1.0"  
     labels_files = {
         'abnormal': os.path.join(root_dir, 'train-abnormal.csv'),
         'acl': os.path.join(root_dir, 'train-acl.csv'),
         'meniscus': os.path.join(root_dir, 'train-meniscus.csv')
     }
 
-    # Dataset and DataLoader
-    train_dataset = MRNetDataset(root_dir=root_dir, phase='train', view='coronal', labels_files=labels_files, target_size=(32, 256, 256))
+
+    train_dataset = MRNetDataset(
+        root_dir=root_dir,
+        phase='train',
+        view='coronal',
+        labels_files=labels_files,
+        target_size=(32, 256, 256)
+    )
     train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
 
-    # Load and train nnU-Net model
-    print("Training nnU-Net model...")
-    nnunet = train_nnunet_model(train_loader, device, epochs=2)  # You can adjust the number of epochs
+    print("Initializing UNet model...")
+    unet = UNet(in_channels=1, out_channels=3).to(device)
+    print("UNet model initialized.")
 
-    # Step 1: Train nnU-Net and extract features
-    print("Extracting features from ROIs...")
-    extracted_features, labels = train_model1_and_extract_features(nnunet, train_loader, device)
+    print("Starting training process...")
+    trained_unet, trained_regression_model = train_combined_model(unet, train_loader, device)
+    print("Training process completed.")
 
-    # Step 2: Train logistic regression model
-    print("Training logistic regression model...")
-    logistic_regression_model = train_logistic_regression_model(extracted_features, labels, num_epochs=10, learning_rate=0.01)
-
-    # Step 3: Save the feature weights to CSV
-    #feature_names = [f'feature_{i}' for i in range(extracted_features.shape[1])]
-    #save_model_weights(logistic_regression_model, feature_names, "feature_weights.csv")
-
-    # Output feature importance
-    importance = output_feature_importance(logistic_regression_model)
-    print("Feature importance:", importance)
+    save_model_weights(trained_unet, 'nnunet_model.pth')
+    save_model_weights(trained_regression_model, 'regression_model.pth')
 
 
 if __name__ == "__main__":
     main()
-
-
