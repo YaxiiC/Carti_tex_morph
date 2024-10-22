@@ -22,10 +22,11 @@ class MRNetDataset(Dataset):
         self.labels_meniscus = pd.read_csv(labels_files['meniscus'], usecols=[1], header=None)
         
         #only use 5 samples for testing
-        self.max_samples = 2
+        #self.max_samples = 2
 
     def __len__(self):
-        return min(self.max_samples, len(self.labels_abnormal))
+        #return min(self.max_samples, len(self.labels_abnormal))
+        return len(self.labels_abnormal)
 
     def __getitem__(self, idx):
         image_name = f"CORO_000_{idx:04d}.nii.gz"
