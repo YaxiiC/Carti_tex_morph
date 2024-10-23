@@ -13,8 +13,9 @@ def save_features(features, labels, idx, output_dir):
     np.save(label_path, labels.numpy())
 
 def main():
-    root_dir = "/Users/chrissychen/Documents/PhD_2nd_year/miccai2025/MRNet-v1.0"  # Change this to your data directory
-    output_dir = "/Users/chrissychen/Documents/PhD_2nd_year/miccai2025/extracted_features"  # Directory where extracted features will be saved
+    #root_dir = "/Users/chrissychen/Documents/PhD_2nd_year/miccai2025/MRNet-v1.0"  
+    root_dir = "/home/yaxi/MRNet-v1.0_gpu" 
+    output_dir = "/home/yaxi/Carti_tex_morph/extracted_features"
     os.makedirs(output_dir, exist_ok=True)
     
     labels_files = {
@@ -37,7 +38,7 @@ def main():
     # Extract features and save them
     for idx, (image, labels) in enumerate(data_loader):
         image, labels = image.to(device), labels.to(device)
-        features = feature_extractor(image.squeeze(0))  # Remove batch dimension for single image
+        features = feature_extractor(image.squeeze(0)) 
 
         # Save features and labels
         save_features(features, labels.squeeze(0), idx, output_dir)
