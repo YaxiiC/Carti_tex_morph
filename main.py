@@ -82,7 +82,8 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
    
-    root_dir = "/Users/chrissychen/Documents/PhD_2nd_year/miccai2025/MRNet-v1.0"  
+    #root_dir = "/Users/chrissychen/Documents/PhD_2nd_year/miccai2025/MRNet-v1.0"  
+    root_dir = "/home/yaxi/MRNet-v1.0_gpu" 
     labels_files = {
         'abnormal': os.path.join(root_dir, 'train-abnormal.csv'),
         'acl': os.path.join(root_dir, 'train-acl.csv'),
