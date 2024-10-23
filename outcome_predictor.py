@@ -11,7 +11,7 @@ class LogisticRegressionModel(nn.Module):
         outputs = self.linear(x)
         return torch.sigmoid(outputs)
 
-def train_logistic_regression_model(features, labels, num_epochs=10, learning_rate=0.01):
+def train_logistic_regression_model(features, labels, num_epochs=10000, learning_rate=0.001):
     input_dim = features.size(1)
     output_dim = labels.size(1)
 
@@ -32,7 +32,7 @@ def train_logistic_regression_model(features, labels, num_epochs=10, learning_ra
         loss.backward()
         optimizer.step()
 
-        if (epoch+1) % 2 == 0:
+        if (epoch+1) % 50 == 0:
             print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
 
     return model
