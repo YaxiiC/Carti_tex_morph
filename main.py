@@ -20,9 +20,10 @@ def train_combined_model(unet, dataloader, device, num_epochs=10, lr=0.001):
     regression_model = None  
 
     unet.train()  
+    print(f"UNet is using device: {next(unet.parameters()).device}")
 
     for epoch in range(num_epochs):
-        print(f"\nEpoch [{epoch+1}/{num_epochs}]")  
+        #print(f"\nEpoch [{epoch+1}/{num_epochs}]")  
         total_loss = 0
         for batch_idx, batch in enumerate(dataloader):
             images, reg_labels = batch  
@@ -30,12 +31,12 @@ def train_combined_model(unet, dataloader, device, num_epochs=10, lr=0.001):
             reg_labels = reg_labels.to(device)
 
             print(f"Batch {batch_idx+1}:")  
-            print(f"  Input images shape: {images.shape}")
-            print(f"  Regression labels shape: {reg_labels.shape}")
+            #print(f"  Input images shape: {images.shape}")
+            #print(f"  Regression labels shape: {reg_labels.shape}")
 
            
             masks = unet(images)
-            print(f"  UNet output (masks) shape: {masks.shape}")
+            #print(f"  UNet output (masks) shape: {masks.shape}")
 
             
             features = []
