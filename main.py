@@ -80,7 +80,7 @@ def train_combined_model(unet, dataloader, device, num_epochs=10, lr=0.001):
 
 def main():
    
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
    
     #root_dir = "/Users/chrissychen/Documents/PhD_2nd_year/miccai2025/MRNet-v1.0"  
