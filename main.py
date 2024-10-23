@@ -99,7 +99,7 @@ def main():
         labels_files=labels_files,
         target_size=(32, 256, 256)
     )
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
     print("Initializing UNet model...")
     unet = UNet(in_channels=1, out_channels=3).to(device)
